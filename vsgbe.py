@@ -16,6 +16,7 @@
 #!/usr/bin/python
 
 import sys
+import init
 from memFile import *
 from cpu import SimpleZ80
 
@@ -25,26 +26,21 @@ def main(args):
     #define a memória
     ram = Memory()
 
+    init.startUp(args,ram)
+
+    #for i in range(256):
+        #print(ram[i])
+
+    #exit()
+
     #Instância do processador
     z80 = SimpleZ80(ram)
-    
-    print(ram[0])
-    
-    #Define a instrução a executar ADD A,25
-    ins = [0xC6,25,0] 
 
-    #Executa a instrução
-    z80.execute(ins)
-
-    ins = [0xEA,10,0]
-
-    #Executa a instrução
-    z80.execute(ins)
-
-    #Resultado
-    print(z80.reg_file.A)
-    print(z80.clkElapsed)
-    print(ram[10])
+    while (True):
+        print(hex(ram[z80.reg_file.PC]))
+        z80.runInstruction()   
+ 
+    exit()
 
 
 if __name__ == "__main__":

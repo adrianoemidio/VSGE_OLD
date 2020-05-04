@@ -12,22 +12,3 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with VSGBE.  If not, see <https://www.gnu.org/licenses/>.
-
-#!/usr/bin/python
-
-class Memory:
-   
-    #Tamanho de endereço do gameboy
-    ADDR_SPACE = 0xFFFF
-
-    #Construtor da Classe
-    def __init__(self):
-        #Inicializa a lista que representa o espaço de memória
-        self.mem = [0 for addr in range(self.ADDR_SPACE)]
-        print("iniciou..")
-
-    def __setitem__(self,index,data):
-        self.mem[index] = data
-    
-    def __getitem__(self,index):
-        return self.mem[index]

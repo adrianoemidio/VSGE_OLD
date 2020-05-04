@@ -48,8 +48,17 @@ class SimpleZ80:
     # CPU em funcionamento
     def run(self):
         while self.cpuState == CpuState.RUN:
-            opcode = self.mem[self.reg_file.PC,(self.reg_file.PC + 1),(self.reg_file.PC + 2)]
+            #Carrega Instrução (Fecth)
+            opcode = self.mem[self.reg_file.PC],self.mem[(self.reg_file.PC + 1)],self.mem[(self.reg_file.PC + 2)]
+            #Decodifica e excuta
             self.execute(opcode)
+
+    #Roda uma instrução
+    def runInstruction(self):
+        #Carrega Instrução (Fecth)
+        opcode = self.mem[self.reg_file.PC],self.mem[(self.reg_file.PC + 1)],self.mem[(self.reg_file.PC + 2)]
+        #Decodifica e excuta
+        self.execute(opcode)
 
     #Função que excutará os códigos passados pelo opcode[3]
     def execute(self,opcode):
@@ -103,6 +112,12 @@ class SimpleZ80:
                     self.reg_file.clrFlagBit("H")
                     self.reg_file.clrFlagBit("Z")
 
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
+            
+                #Atualiza o clock
+                self.clkElapsed = 12
+
 
             else:
                 #Executa INC r8
@@ -116,6 +131,12 @@ class SimpleZ80:
                 else:
                     self.reg_file.clrFlagBit("H")
                     self.reg_file.clrFlagBit("Z")
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
+            
+                #Atualiza o clock
+                self.clkElapsed = 4
 
         elif z == 5:
 
@@ -142,6 +163,12 @@ class SimpleZ80:
                     self.reg_file.clrFlagBit("H")
                     self.reg_file.clrFlagBit("Z")
 
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
+            
+                #Atualiza o clock
+                self.clkElapsed = 12
+
 
             else:
                 #Executa DEC r8
@@ -159,6 +186,12 @@ class SimpleZ80:
                 else:
                     self.reg_file.clrFlagBit("H")
                     self.reg_file.clrFlagBit("Z")
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
+            
+                #Atualiza o clock
+                self.clkElapsed = 4
         
         elif z == 6:
 
@@ -168,9 +201,22 @@ class SimpleZ80:
             if y == 6:
                 #Executa LD (HL),d8
                 self.mem[self.reg_file.HL] = opcode[1]
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 2
+            
+                #Atualiza o clock
+                self.clkElapsed = 12
+
             else:
                 #Executa LD r8,d8
                 self.reg_file.writeReg8(y,opcode[1])
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 2
+            
+                #Atualiza o clock
+                self.clkElapsed = 8
 
         else:
            self.execG0S7(opcode)
@@ -182,11 +228,16 @@ class SimpleZ80:
             #execulta a instrução halt
             self.cpuState == CpuState.HALT
 
+            #Atulaiza o contador de programa
+            self.reg_file.PC += 1
+          
             #Atualiza o clock
             self.clkElapsed = 4
 
         
         else:
+
+            #Instrução LD 
             
             #Registro de Origem
             z = opcode & 0x07
@@ -196,13 +247,36 @@ class SimpleZ80:
             
             #Verifica se a origem não é a memória
             if z == 6:
+                #Executa LD r8,(HL) 
                 self.reg_file.writeReg8(y,self.mem[self.reg_file.HL])
-            elif y == 6:
-                self.mem[self.reg_file.HL] = self.reg_file.readReg8(z)
-            else:
-                self.reg_file.writeReg8(y,self.reg_file.readReg8(z))
-            
 
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
+            
+                #Atualiza o clock
+                self.clkElapsed = 8
+
+            elif y == 6:
+                #Executa LD (HL),r8 
+                self.mem[self.reg_file.HL] = self.reg_file.readReg8(z)
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
+            
+                #Atualiza o clock
+                self.clkElapsed = 8
+
+            else:
+                #Executa LD r8,r8 
+                self.reg_file.writeReg8(y,self.reg_file.readReg8(z))
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
+            
+                #Atualiza o clock
+                self.clkElapsed = 4
+            
+       
     #Opcode sem prefixo Grupo 2
     def execG2(self,opcode):
         
@@ -221,7 +295,7 @@ class SimpleZ80:
 
         #varivel temporária para indentificar o subgrupo da instrução
         z = opcode[0] & 0x07
-        y = (opcode & 0x38) >> 3
+        y = (opcode[0] & 0x38) >> 3
 
         if z == 0:
             self.execG3S0(opcode)
@@ -243,7 +317,7 @@ class SimpleZ80:
             self.mem[(self.reg_file.SP - 2)] = (self.reg_file.PC & 0xFF)
             self.reg_file.SP -= 2
             self.reg_file.PC = (y*8)
-
+          
             #Atualiza o clock
             self.clkElapsed = 16
 
@@ -284,6 +358,9 @@ class SimpleZ80:
                     #Verifica o flag Zero
                     if self.mem[self.reg_file.HL] == 0:
                         self.reg_file.setFlagBit("Z")
+
+                    #Atulaiza o contador de programa
+                    self.reg_file.PC += 2
                 
                     #Atualiza o clock
                     self.clkElapsed = 16
@@ -302,6 +379,9 @@ class SimpleZ80:
                     #Verifica o flag Zero
                     if self.reg_file.readReg8(z) == 0:
                         self.reg_file.setFlagBit("Z")
+
+                    #Atulaiza o contador de programa
+                    self.reg_file.PC += 2
                 
                     #Atualiza o clock
                     self.clkElapsed = 18
@@ -325,6 +405,9 @@ class SimpleZ80:
                     #Verifica o flag Zero
                     if self.mem[self.reg_file.HL] == 0:
                         self.reg_file.setFlagBit("Z")
+
+                    #Atulaiza o contador de programa
+                    self.reg_file.PC += 2
                 
                     #Atualiza o clock
                     self.clkElapsed = 16
@@ -344,6 +427,9 @@ class SimpleZ80:
                     if self.reg_file.readReg8(z) == 0:
                         self.reg_file.setFlagBit("Z")
                 
+                    #Atulaiza o contador de programa
+                    self.reg_file.PC += 1
+
                     #Atualiza o clock
                     self.clkElapsed = 8
 
@@ -360,7 +446,7 @@ class SimpleZ80:
                     #Verifica o bit de overflow
                     if (self.mem[self.reg_file.HL]& 0x80): self.reg_file.setFlagBit("C")
 
-                    #Executa #RL (HL)
+                    #Executa RL (HL)
                     self.mem[self.reg_file.HL] = (self.mem[self.reg_file.HL] << 1) & 0xFF
 
                     #Copia o carry para bit 0
@@ -369,6 +455,9 @@ class SimpleZ80:
                     #Verifica o flag Zero
                     if self.mem[self.reg_file.HL] == 0:
                         self.reg_file.setFlagBit("Z")
+
+                    #Atulaiza o contador de programa
+                    self.reg_file.PC += 2
                 
                     #Atualiza o clock
                     self.clkElapsed = 16
@@ -385,7 +474,7 @@ class SimpleZ80:
                     #Verifica o bit de overflow
                     if (self.reg_file.readReg8(z) & 0x80): self.reg_file.setFlagBit("C")
 
-                    #Executa #RL r8
+                    #Executa RL r8
                     self.reg_file.writeReg8(z, (self.reg_file.readReg8(z) << 1) & 0xFF)
 
                     #Copia o carry para bit 0
@@ -394,6 +483,9 @@ class SimpleZ80:
                     #Verifica o flag Zero
                     if self.reg_file.readReg8(z) == 0:
                         self.reg_file.setFlagBit("Z")
+
+                    #Atulaiza o contador de programa
+                    self.reg_file.PC += 2
                 
                     #Atualiza o clock
                     self.clkElapsed = 8
@@ -447,6 +539,9 @@ class SimpleZ80:
                     #Verifica o flag Zero
                     if self.reg_file.readReg8(z) == 0:
                         self.reg_file.setFlagBit("Z")
+
+                    #Atulaiza o contador de programa
+                    self.reg_file.PC += 2
                 
                     #Atualiza o clock
                     self.clkElapsed = 8
@@ -467,6 +562,9 @@ class SimpleZ80:
                     #Verifica o flag Zero
                     if self.mem[self.reg_file.HL] == 0:
                         self.reg_file.setFlagBit("Z")
+
+                    #Atulaiza o contador de programa
+                    self.reg_file.PC += 2
                 
                     #Atualiza o clock
                     self.clkElapsed = 16
@@ -486,6 +584,9 @@ class SimpleZ80:
                     #Verifica o flag Zero
                     if self.reg_file.readReg8(z) == 0:
                         self.reg_file.setFlagBit("Z")
+
+                    #Atulaiza o contador de programa
+                    self.reg_file.PC += 2
                 
                     #Atualiza o clock
                     self.clkElapsed = 8
@@ -500,7 +601,7 @@ class SimpleZ80:
                     #Verifica o bit de overflow
                     if (self.mem[self.reg_file.HL]& 0x01): self.reg_file.setFlagBit("C")
 
-                    #Executa #SRA (HL)
+                    #Executa SRA (HL)
                     self.mem[self.reg_file.HL] = (self.mem[self.reg_file.HL] >> 1) & 0xFF
 
                     #Copia o bit 6 para bit 7
@@ -509,7 +610,10 @@ class SimpleZ80:
                     #Verifica o flag Zero
                     if self.mem[self.reg_file.HL] == 0:
                         self.reg_file.setFlagBit("Z")
-                
+
+                    #Atulaiza o contador de programa
+                    self.reg_file.PC += 2
+                                    
                     #Atualiza o clock
                     self.clkElapsed = 16
 
@@ -532,6 +636,12 @@ class SimpleZ80:
                     if self.reg_file.readReg8(z) == 0:
                         self.reg_file.setFlagBit("Z")
 
+                    #Atulaiza o contador de programa
+                    self.reg_file.PC += 2
+                                    
+                    #Atualiza o clock
+                    self.clkElapsed = 8
+
             elif y == 6:
                 
                 #limpa os flags
@@ -552,7 +662,10 @@ class SimpleZ80:
                     #Verifica o flag Zero
                     if self.mem[self.reg_file.HL] == 0:
                         self.reg_file.setFlagBit("Z")
-                
+
+                    #Atulaiza o contador de programa
+                    self.reg_file.PC += 2
+                                                
                     #Atualiza o clock
                     self.clkElapsed = 8
                 
@@ -570,6 +683,9 @@ class SimpleZ80:
                     #Verifica o flag Zero
                     if self.reg_file.readReg8(z) == 0:
                         self.reg_file.setFlagBit("Z")
+
+                    #Atulaiza o contador de programa
+                    self.reg_file.PC += 2
                 
                     #Atualiza o clock
                     self.clkElapsed = 8
@@ -589,6 +705,9 @@ class SimpleZ80:
                     #Verifica o flag Zero
                     if self.mem[self.reg_file.HL] == 0:
                         self.reg_file.setFlagBit("Z")
+
+                    #Atulaiza o contador de programa
+                    self.reg_file.PC += 2
                 
                     #Atualiza o clock
                     self.clkElapsed = 16
@@ -608,6 +727,9 @@ class SimpleZ80:
                     #Verifica o flag Zero
                     if self.reg_file.readReg8(z) == 0:
                         self.reg_file.setFlagBit("Z")
+
+                    #Atulaiza o contador de programa
+                    self.reg_file.PC += 2
                 
                     #Atualiza o clock
                     self.clkElapsed = 8
@@ -625,19 +747,25 @@ class SimpleZ80:
                 if ((self.mem[self.reg_file.HL] & (1 << y)) >> y) == 0:
                     self.reg_file.setFlagBit("Z")
                 
-                    #Atualiza o clock
-                    self.clkElapsed = 16
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 2
+                
+                #Atualiza o clock
+                self.clkElapsed = 16
 
 
                 
             else:
 
                 #Executa BIT b, r8
-                if ((self.reg_file.readReg8(z) & (1 << y)) >> y) == 0:
+                if ((int(self.reg_file.readReg8(z)) & (1 << y)) >> y) == 0:
                     self.reg_file.setFlagBit("Z")
                 
-                    #Atualiza o clock
-                    self.clkElapsed = 8
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 2
+
+                #Atualiza o clock
+                self.clkElapsed = 8
 
 
         elif x == 2:
@@ -646,6 +774,9 @@ class SimpleZ80:
 
                 #Executa RES b, (HL)
                 self.mem[self.reg_file.HL] = (self.mem[self.reg_file.HL] & ((~(1 << y)) & 0xFF))
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 2
                 
                 #Atualiza o clock
                 self.clkElapsed = 16
@@ -654,6 +785,9 @@ class SimpleZ80:
 
                 #Executa RES b, r8
                 self.reg_file.clrRegBit(y,z)
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 2
                 
                 #Atualiza o clock
                 self.clkElapsed = 8
@@ -664,6 +798,9 @@ class SimpleZ80:
 
                 #Executa SET b, (HL)
                 self.mem[self.reg_file.HL] =  ((self.mem[self.reg_file.HL] |(1 << y)) & 0xFF)
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 2
                 
                 #Atualiza o clock
                 self.clkElapsed = 16
@@ -673,6 +810,9 @@ class SimpleZ80:
 
                 #Executa SET b, r8
                 self.reg_file.setRegBit(y,z)
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 2
                 
                 #Atualiza o clock
                 self.clkElapsed = 8
@@ -690,6 +830,9 @@ class SimpleZ80:
         if y == 0:
             #Executa NOP
 
+            #Atulaiza o contador de programa
+            self.reg_file.PC += 1
+
             #Atualiza o clock
             self.clkElapsed = 4
 
@@ -698,12 +841,18 @@ class SimpleZ80:
             self.mem[opcode[1]] = (self.reg_file.SP & 0x00FF)
             self.mem[opcode[2]] = (self.reg_file.SP & 0xFF00)/256
 
+            #Atulaiza o contador de programa
+            self.reg_file.PC += 3
+
             #Atualiza o clock
             self.clkElapsed = 20
 
         elif y == 2:
             #Executa STOP
             self.cpuState = CpuState.STOP
+
+            #Atulaiza o contador de programa
+            self.reg_file.PC += 2
 
             #Atualiza o clock
             self.clkElapsed = 4
@@ -714,6 +863,9 @@ class SimpleZ80:
 
             #Executa JR r8
             self.reg_file.PC += addr
+
+            #Atulaiza o contador de programa
+            self.reg_file.PC += 2
 
             #Atualiza o clock
             self.clkElapsed = 12
@@ -734,6 +886,9 @@ class SimpleZ80:
 
                 #Atualiza o clock
                 self.clkElapsed = 8
+            
+            #Atulaiza o contador de programa
+            self.reg_file.PC += 2
 
         elif y == 5:
 
@@ -752,6 +907,9 @@ class SimpleZ80:
                 #Atualiza o clock
                 self.clkElapsed = 8
             
+            #Atulaiza o contador de programa
+            self.reg_file.PC += 2
+            
         elif y == 6:
 
             if self.reg_file.getFlagBit("C") == 0:
@@ -768,6 +926,9 @@ class SimpleZ80:
 
                 #Atualiza o clock
                 self.clkElapsed = 8
+            
+            #Atulaiza o contador de programa
+            self.reg_file.PC += 2
             
         else:
 
@@ -786,6 +947,9 @@ class SimpleZ80:
                 #Atualiza o clock
                 self.clkElapsed = 8
             
+            #Atulaiza o contador de programa
+            self.reg_file.PC += 2
+            
 
     def execG0S1(self,opcode):
         #varivel temporária para indentificar o subgrupo da instrução
@@ -799,31 +963,43 @@ class SimpleZ80:
             
             if p == 0:
                 #Executa LD BC,d16
-                self.reg_file.C = self.mem[opcode[1]]
-                self.reg_file.B = self.mem[opcode[2]]
+                self.reg_file.C = opcode[1]
+                self.reg_file.B = opcode[2]
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 3
 
                 #Atualiza o clock
                 self.clkElapsed = 12
 
             elif p == 1:
                 #Executa LD DE,d16
-                self.reg_file.E = self.mem[opcode[1]]
-                self.reg_file.D = self.mem[opcode[2]]
+                self.reg_file.E = opcode[1]
+                self.reg_file.D = opcode[2]
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 3
 
                 #Atualiza o clock
                 self.clkElapsed = 12
 
             elif p == 2:
                 #Executa LD HL,d16
-                self.reg_file.L = self.mem[opcode[1]]
-                self.reg_file.H = self.mem[opcode[2]]
+                self.reg_file.L = opcode[1]
+                self.reg_file.H = opcode[2]
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 3
 
                 #Atualiza o clock
                 self.clkElapsed = 12
 
             else:
                 #Executa LD SP,d16
-                self.reg_file.SP = self.mem[opcode[1]] + (self.mem[opcode[2]] * 256)
+                self.reg_file.SP = opcode[1] | (opcode[2] << 8)
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 3
 
                 #Atualiza o clock
                 self.clkElapsed = 12
@@ -850,6 +1026,9 @@ class SimpleZ80:
                     self.reg_file.HL -= 65536
                     #Seta o carry
                     self.reg_file.setFlagBit("C")
+                
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
 
                 #Atualiza o clock
                 self.clkElapsed = 8
@@ -869,6 +1048,9 @@ class SimpleZ80:
                     self.reg_file.HL -= 65536
                     #Seta o carry
                     self.reg_file.setFlagBit("C")
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
                 
                 #Atualiza o clock
                 self.clkElapsed = 8
@@ -889,6 +1071,9 @@ class SimpleZ80:
                     #Seta o carry
                     self.reg_file.setFlagBit("C")
 
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
+
                 #Atualiza o clock
                 self.clkElapsed = 8
                 
@@ -908,6 +1093,9 @@ class SimpleZ80:
                     #Seta o carry
                     self.reg_file.setFlagBit("C")
                 
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
+                
                 #Atualiza o clock
                 self.clkElapsed = 8
 
@@ -926,12 +1114,18 @@ class SimpleZ80:
                 #Executa LD (BC), A
                 self.mem[self.reg_file.BC] = self.reg_file.A
 
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
+
                 #Atualiza o clock
                 self.clkElapsed = 8
             
             elif p == 1:
                 #Executa LD (DE), A
                 self.mem[self.reg_file.DE] = self.reg_file.A
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
 
                 #Atualiza o clock
                 self.clkElapsed = 8
@@ -947,6 +1141,9 @@ class SimpleZ80:
                 if self.reg_file.HL > 65535:
                     #Faz o overflow em 16 bits
                     self.reg_file.HL -= 65536
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
                 
                 #Atualiza o clock
                 self.clkElapsed = 8
@@ -961,6 +1158,9 @@ class SimpleZ80:
                 if self.reg_file.HL < 0:
                     #Faz o overflow em 16 bits
                     self.reg_file.HL += 65536
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
                 
                 #Atualiza o clock
                 self.clkElapsed = 8
@@ -973,12 +1173,18 @@ class SimpleZ80:
                 #Executa LD A,(BC)
                 self.reg_file.A = self.mem[self.reg_file.BC]
 
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
+
                 #Atualiza o clock
                 self.clkElapsed = 8
             
             elif p == 1:
                 #Executa LD A,(DE)
                 self.reg_file.A = self.mem[self.reg_file.DE]
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
 
                 #Atualiza o clock
                 self.clkElapsed = 8
@@ -994,7 +1200,10 @@ class SimpleZ80:
                 if self.reg_file.HL > 65535:
                     #Faz o overflow em 16 bits
                     self.reg_file.HL -= 65536
-                
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
+
                 #Atualiza o clock
                 self.clkElapsed = 8
 
@@ -1009,6 +1218,9 @@ class SimpleZ80:
                 if self.reg_file.HL < 0:
                     #Faz o overflow em 16 bits
                     self.reg_file.HL += 65536
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
                 
                 #Atualiza o clock
                 self.clkElapsed = 8
@@ -1030,6 +1242,9 @@ class SimpleZ80:
                 if self.reg_file.BC > 65536:
                     #Faz o overflow em 16 bits
                     self.reg_file.BC -= 65536
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
                 
                 #Atualiza o clock
                 self.clkElapsed = 8
@@ -1042,6 +1257,9 @@ class SimpleZ80:
                 if self.reg_file.DE > 65536:
                     #Faz o overflow em 16 bits
                     self.reg_file.DE -= 65536
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
                 
                 #Atualiza o clock
                 self.clkElapsed = 8
@@ -1053,7 +1271,10 @@ class SimpleZ80:
                 #Verifica se houve overflow
                 if self.reg_file.HL > 65536:
                     #Faz o overflow em 16 bits
-                    self.reg_file.HL -= 65536 
+                    self.reg_file.HL -= 65536
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1 
                 
                 #Atualiza o clock
                 self.clkElapsed = 8
@@ -1066,6 +1287,9 @@ class SimpleZ80:
                 if self.reg_file.SP > 65536:
                     #Faz o overflow em 16 bits
                     self.reg_file.SP -= 65536
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
                 
                 #Atualiza o clock
                 self.clkElapsed = 8
@@ -1082,6 +1306,9 @@ class SimpleZ80:
                 if self.reg_file.BC < 0:
                     #Faz o overflow em 16 bits
                     self.reg_file.BC += 65536
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
                 
                 #Atualiza o clock
                 self.clkElapsed = 8
@@ -1095,6 +1322,9 @@ class SimpleZ80:
                     #Faz o overflow em 16 bits
                     self.reg_file.DE += 65536
 
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
+
                 #Atualiza o clock
                 self.clkElapsed = 8
             
@@ -1107,6 +1337,9 @@ class SimpleZ80:
                     #Faz o overflow em 16 bits
                     self.reg_file.HL += 65536
 
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
+
                 #Atualiza o clock
                 self.clkElapsed = 8
 
@@ -1118,9 +1351,13 @@ class SimpleZ80:
                 if self.reg_file.SP < 0:
                     #Faz o overflow em 16 bits
                     self.reg_file.SP += 65536
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
                 
                 #Atualiza o clock
-                self.clkElapsed = 8           
+                self.clkElapsed = 8       
+
 
     def execG0S7(self,opcode):
         
@@ -1137,6 +1374,9 @@ class SimpleZ80:
             #Copia o carry para bit 0
             self.reg_file.A |= self.reg_file.getFlagBit("C")
 
+            #Atulaiza o contador de programa
+            self.reg_file.PC += 1
+
             #Atualiza o clock
             self.clkElapsed = 4
 
@@ -1152,6 +1392,9 @@ class SimpleZ80:
 
             #Copia o carry para bit 7
             self.reg_file.A |= (self.reg_file.getFlagBit("C") << 7)
+
+            #Atulaiza o contador de programa
+            self.reg_file.PC += 1
 
             #Atualiza o clock
             self.clkElapsed = 4
@@ -1173,6 +1416,9 @@ class SimpleZ80:
             #Copia o carry para bit 0
             self.reg_file.A |= c_temp
 
+            #Atulaiza o contador de programa
+            self.reg_file.PC += 1
+
             #Atualiza o clock
             self.clkElapsed = 8
             
@@ -1192,6 +1438,9 @@ class SimpleZ80:
 
             #Copia o carry para bit 7
             self.reg_file.A |= (c_temp << 7)
+
+            #Atulaiza o contador de programa
+            self.reg_file.PC += 1
 
             #Atualiza o clock
             self.clkElapsed = 4
@@ -1238,6 +1487,9 @@ class SimpleZ80:
                 
             if self.reg_file.A == 0:
                 self.reg_file.setFlagBit("H")
+            
+            #Atulaiza o contador de programa
+            self.reg_file.PC += 1
         
             #Atualiza o clock
             self.clkElapsed = 4
@@ -1252,6 +1504,9 @@ class SimpleZ80:
             #Executa CPL
             self.reg_file.A = ((~self.reg_file.A) & 0xFF)
 
+            #Atulaiza o contador de programa
+            self.reg_file.PC += 1
+
             #Atualiza o clock
             self.clkElapsed = 4
                 
@@ -1260,6 +1515,9 @@ class SimpleZ80:
             self.reg_file.setFlagBit("C")
             self.reg_file.clrFlagBit("H")
             self.reg_file.clrFlagBit("N")
+
+            #Atulaiza o contador de programa
+            self.reg_file.PC += 1
 
             #Atualiza o clock
             self.clkElapsed = 4
@@ -1273,6 +1531,9 @@ class SimpleZ80:
                 self.reg_file.clrFlagBit("C")
             else:
                 self.reg_file.setFlagBit("C")
+            
+            #Atulaiza o contador de programa
+            self.reg_file.PC += 1
             
             #Atualiza o clock
             self.clkElapsed = 4
@@ -1306,6 +1567,9 @@ class SimpleZ80:
                 #Seta o carry
                 self.reg_file.setFlagBit("C")
             
+            #Atulaiza o contador de programa
+            self.reg_file.PC += 2
+            
             #Atualiza o clock
             self.clkElapsed = 12
 
@@ -1313,6 +1577,9 @@ class SimpleZ80:
 
             #Executa LD A, (0xFF00 + n)
             self.reg_file.A =  self.mem[((opcode[1] + 0xFF00) & 0xFFFF)]
+
+            #Atulaiza o contador de programa
+            self.reg_file.PC += 2
 
             #Atualiza o clock
             self.clkElapsed = 12
@@ -1336,6 +1603,9 @@ class SimpleZ80:
                 #Seta o carry
                 self.reg_file.setFlagBit("C")
 
+            #Atulaiza o contador de programa
+            self.reg_file.PC += 2
+
             #Atualiza o clock
             self.clkElapsed = 16
 
@@ -1343,6 +1613,9 @@ class SimpleZ80:
 
             #Executa LD (0xFF00 + nn), A
             self.mem[((0xFF00 + opcode[1]) & 0xFFFF)] = self.reg_file.A
+
+            #Atulaiza o contador de programa
+            self.reg_file.PC += 2
 
             #Atualiza o clock
             self.clkElapsed = 12
@@ -1352,14 +1625,18 @@ class SimpleZ80:
             if self.reg_file.getFlagBit("C"):
                 self.reg_file.PC = (((self.mem[self.reg_file.SP] << 8) | self.mem[self.reg_file.SP]) & 0xFFFF)
                 self.reg_file.SP += 2
-
+                
                 #Atualiza o clock
                 self.clkElapsed = 20
+
             else:
                 #Não retorna da Subrotina
 
                 #Atualiza o clock
                 self.clkElapsed = 8
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
 
         elif y == 2:
             #Executa RET NC
@@ -1375,6 +1652,9 @@ class SimpleZ80:
                 #Atualiza o clock
                 self.clkElapsed = 8
 
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
+
         elif y == 1:
             #Executa RET Z
             if self.reg_file.getFlagBit("Z"):
@@ -1389,6 +1669,9 @@ class SimpleZ80:
                 #Atualiza o clock
                 self.clkElapsed = 8
 
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
+
         else:
             #Executa RET NZ
             if self.reg_file.getFlagBit("Z") == 0:
@@ -1402,6 +1685,9 @@ class SimpleZ80:
 
                 #Atualiza o clock
                 self.clkElapsed = 8
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
 
 
     def execG3S1(self,opcode):
@@ -1424,6 +1710,9 @@ class SimpleZ80:
                 #Incrementa a pilha
                 self.reg_file.SP += 2
 
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
+
                 #Atualiza o clock
                 self.clkElapsed = 12
 
@@ -1436,6 +1725,9 @@ class SimpleZ80:
                 #Incrementa a pilha
                 self.reg_file.SP += 2
 
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
+
                 #Atualiza o clock
                 self.clkElapsed = 12
 
@@ -1447,6 +1739,9 @@ class SimpleZ80:
                 #Incrementa a pilha
                 self.reg_file.SP += 2
 
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
+
                 #Atualiza o clock
                 self.clkElapsed = 12
 
@@ -1457,6 +1752,9 @@ class SimpleZ80:
                
                 #Incrementa a pilha
                 self.reg_file.SP += 2
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
 
                 #Atualiza o clock
                 self.clkElapsed = 12
@@ -1491,12 +1789,15 @@ class SimpleZ80:
                 self.clkElapsed = 4
 
             else:
-
                 #Executa LD SP, HL
                 self.reg_file.SP = self.reg_file.HL
 
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
+
                 #Atualiza o clock
                 self.clkElapsed = 8
+
 
     def execG3S2(self,opcode):
         #varivel temporária para indentificar o tipo de instrução
@@ -1508,6 +1809,9 @@ class SimpleZ80:
             #Executa LD A, (nn)
             self.reg_file.A = self.mem[((opcode[2] << 8 ) | self.mem[opcode[1]] & 0xFFFF)]
 
+            #Atulaiza o contador de programa
+            self.reg_file.PC += 3
+
             #Atualiza o clock
             self.clkElapsed = 16
 
@@ -1515,6 +1819,9 @@ class SimpleZ80:
 
             #Executa LD A, (0xFF00+C)
             self.reg_file.A = self.mem[(0xFF00 + self.reg_file.C)]
+
+            #Atulaiza o contador de programa
+            self.reg_file.PC += 2
 
             #Atualiza o clock
             self.clkElapsed = 8
@@ -1524,6 +1831,9 @@ class SimpleZ80:
             #Executa LD (nn), A
             self.mem[(((opcode[2] << 8) | opcode[1]) & 0xFFFF)] = self.reg_file.A
 
+            #Atulaiza o contador de programa
+            self.reg_file.PC += 3
+            
             #Atualiza o clock
             self.clkElapsed = 16
 
@@ -1532,6 +1842,9 @@ class SimpleZ80:
             #Executa LD (0xFF00+C), A
             self.mem[(0xFF00 + self.reg_file.C)] = self.reg_file.A
 
+            #Atulaiza o contador de programa
+            self.reg_file.PC += 1
+
             #Atualiza o clock
             self.clkElapsed = 8
 
@@ -1539,8 +1852,8 @@ class SimpleZ80:
 
             #Executa JP C,a16
             if self.reg_file.getFlagBit("C"):
-                self.reg_file.PC = (((self.mem[opcode[2]] << 8) | self.mem[opcode[1]]) & 0xFFFF)
-
+                self.reg_file.PC = (((opcode[2] << 8) | opcode[1]) & 0xFFFF)
+                
                 #Atualiza o clock
                 self.clkElapsed = 16
             
@@ -1549,12 +1862,15 @@ class SimpleZ80:
 
                 #Atualiza o clock
                 self.clkElapsed = 12
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 3
 
         elif y == 2:
 
             #Executa JP NC,a16
             if self.reg_file.getFlagBit("C") == 0:
-                self.reg_file.PC = (((self.mem[opcode[2]] << 8) | self.mem[opcode[1]]) & 0xFFFF)
+                self.reg_file.PC = (((opcode[2] << 8) | opcode[1]) & 0xFFFF)
 
                 #Atualiza o clock
                 self.clkElapsed = 16
@@ -1564,12 +1880,15 @@ class SimpleZ80:
 
                 #Atualiza o clock
                 self.clkElapsed = 12
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 3
 
         elif y == 1:
 
             #Executa JP Z,a16
             if self.reg_file.getFlagBit("Z"):
-                self.reg_file.PC = (((self.mem[opcode[2]] << 8) | self.mem[opcode[1]]) & 0xFFFF)
+                self.reg_file.PC = (((opcode[2] << 8) | opcode[1]) & 0xFFFF)
 
                 #Atualiza o clock
                 self.clkElapsed = 16
@@ -1579,12 +1898,15 @@ class SimpleZ80:
 
                 #Atualiza o clock
                 self.clkElapsed = 12
+                
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 3
 
         else:
 
             #Executa JP NZ,a16
             if self.reg_file.getFlagBit("Z") == 0:
-                self.reg_file.PC = (((self.mem[opcode[2]] << 8) | self.mem[opcode[1]]) & 0xFFFF)
+                self.reg_file.PC = (((opcode[2] << 8) | opcode[1]) & 0xFFFF)
 
                 #Atualiza o clock
                 self.clkElapsed = 16
@@ -1594,6 +1916,9 @@ class SimpleZ80:
 
                 #Atualiza o clock
                 self.clkElapsed = 12
+                
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 3
 
 
     def execG3S3(self,opcode):
@@ -1606,6 +1931,9 @@ class SimpleZ80:
             #Executa EI
             self.IE = 1
 
+            #Atulaiza o contador de programa
+            self.reg_file.PC += 1
+
             #Atualiza o clock
             self.clkElapsed = 12
             
@@ -1614,13 +1942,16 @@ class SimpleZ80:
             #Executa DI
             self.IE = 0
 
+            #Atulaiza o contador de programa
+            self.reg_file.PC += 1
+
             #Atualiza o clock
             self.clkElapsed = 12
 
         elif y == 0:
 
             #Executa JP nn
-            self.reg_file.PC = (((self.mem[opcode[2]] << 8) | self.mem[opcode[1]]) & 0xFFFF)
+            self.reg_file.PC = (((opcode[2] << 8) | opcode[1]) & 0xFFFF)
 
             #Atualiza o clock
             self.clkElapsed = 16
@@ -1632,12 +1963,16 @@ class SimpleZ80:
 
         #Verifica qual instrução executar
         if y == 0:
+
+            #Atulaiza o contador de programa
+            self.reg_file.PC += 3
+
             #CALL NZ,a16
             if self.reg_file.getFlagBit("Z") == 0:
                 self.mem[(self.reg_file.SP - 1)] = ((self.reg_file.PC & 0xFF00) >> 8)
                 self.mem[(self.reg_file.SP - 2)] = (self.reg_file.PC & 0xFF)
                 self.reg_file.SP -= 2
-                self.reg_file.PC = (((self.mem[opcode[2]] << 8) | self.mem[opcode[1]]) & 0xFFFF)
+                self.reg_file.PC = (((opcode[2] << 8) | opcode[1]) & 0xFFFF)
 
                 #Atualiza o clock
                 self.clkElapsed = 24
@@ -1647,14 +1982,19 @@ class SimpleZ80:
 
                 #Atualiza o clock
                 self.clkElapsed = 12
+                
 
         elif y == 1:
+
+            #Atulaiza o contador de programa
+            self.reg_file.PC += 3
+
             #CALL Z,a16
             if self.reg_file.getFlagBit("Z"):
                 self.mem[(self.reg_file.SP - 1)] = ((self.reg_file.PC & 0xFF00) >> 8)
                 self.mem[(self.reg_file.SP - 2)] = (self.reg_file.PC & 0xFF)
                 self.reg_file.SP -= 2
-                self.reg_file.PC = (((self.mem[opcode[2]] << 8) | self.mem[opcode[1]]) & 0xFFFF)
+                self.reg_file.PC = (((opcode[2] << 8) | opcode[1]) & 0xFFFF)
 
                 #Atualiza o clock
                 self.clkElapsed = 24
@@ -1666,29 +2006,38 @@ class SimpleZ80:
                 self.clkElapsed = 12
 
         elif y == 2:
+
+            #Atulaiza o contador de programa
+            self.reg_file.PC += 3
+
             #CALL NC,a16
             if self.reg_file.getFlagBit("C") == 0:
                 self.mem[(self.reg_file.SP - 1)] = ((self.reg_file.PC & 0xFF00) >> 8)
                 self.mem[(self.reg_file.SP - 2)] = (self.reg_file.PC & 0xFF)
                 self.reg_file.SP -= 2
-                self.reg_file.PC = (((self.mem[opcode[2]] << 8) | self.mem[opcode[1]]) & 0xFFFF)
+                self.reg_file.PC = (((opcode[2] << 8) | opcode[1]) & 0xFFFF)
 
                 #Atualiza o clock
                 self.clkElapsed = 24
-            
+           
             else:
                 #Não efetua o chamada de subrotina
 
                 #Atualiza o clock
                 self.clkElapsed = 12
 
+
         elif y == 3:
+
+            #Atulaiza o contador de programa
+            self.reg_file.PC += 3
+
             #CALL C,a16
             if self.reg_file.getFlagBit("C"):
                 self.mem[(self.reg_file.SP - 1)] = ((self.reg_file.PC & 0xFF00) >> 8)
                 self.mem[(self.reg_file.SP - 2)] = (self.reg_file.PC & 0xFF)
                 self.reg_file.SP -= 2
-                self.reg_file.PC = (((self.mem[opcode[2]] << 8) | self.mem[opcode[1]]) & 0xFFFF)
+                self.reg_file.PC = (((opcode[2] << 8) | opcode[1]) & 0xFFFF)
 
                 #Atualiza o clock
                 self.clkElapsed = 24
@@ -1698,7 +2047,6 @@ class SimpleZ80:
 
                 #Atualiza o clock
                 self.clkElapsed = 12
-
 
     def execG3S5(self,opcode):
         #varivel temporária para indentificar o subgrupo da instrução
@@ -1716,6 +2064,12 @@ class SimpleZ80:
                 self.mem[(self.reg_file.SP - 2)] = (self.reg_file.BC & 0xFF)
                 self.reg_file.SP -= 2
 
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
+
+                #Atualiza o clock
+                self.clkElapsed = 16
+
             elif p == 1:
                 #Executa PUSH DE
                 self.mem[(self.reg_file.SP - 1)] = ((self.reg_file.DE & 0xFF00) >> 8)
@@ -1731,6 +2085,9 @@ class SimpleZ80:
                 self.mem[(self.reg_file.SP - 2)] = (self.reg_file.HL & 0xFF)
                 self.reg_file.SP -= 2
 
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
+
                 #Atualiza o clock
                 self.clkElapsed = 16
 
@@ -1740,12 +2097,17 @@ class SimpleZ80:
                 self.mem[(self.reg_file.SP - 2)] = (self.reg_file.AF & 0xFF)
                 self.reg_file.SP -= 2
 
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
+
                 #Atualiza o clock
                 self.clkElapsed = 16
 
         else:
             
-  
+            #Atulaiza o contador de programa
+            self.reg_file.PC += 3
+
             #Seleciona a instrução
             if p == 0:
                 #Executa CALL nn
@@ -1785,6 +2147,9 @@ class SimpleZ80:
             if self.reg_file.A == 0:
                 self.reg_file.setFlagBit("Z")
 
+            #Atulaiza o contador de programa
+            self.reg_file.PC += 2
+
             #Atualiza o clock
             self.clkElapsed = 8
 
@@ -1817,6 +2182,10 @@ class SimpleZ80:
             #Verifica se o resulatdo foi zero
             if self.reg_file.A == 0:
                 self.reg_file.setFlagBit("Z")
+
+
+            #Atulaiza o contador de programa
+            self.reg_file.PC += 2
             
             #Atualiza o clock
             self.clkElapsed = 8
@@ -1845,6 +2214,9 @@ class SimpleZ80:
             #Verifica se o resulatdo foi zero
             if self.reg_file.A == 0:
                 self.reg_file.setFlagBit("Z")
+
+            #Atulaiza o contador de programa
+            self.reg_file.PC += 2
 
             #Atualiza o clock
             self.clkElapsed = 8
@@ -1879,6 +2251,9 @@ class SimpleZ80:
             if self.reg_file.A == 0:
                 self.reg_file.setFlagBit("Z")
 
+            #Atulaiza o contador de programa
+            self.reg_file.PC += 1
+
             #Atualiza o clock
             self.clkElapsed = 8
 
@@ -1897,6 +2272,9 @@ class SimpleZ80:
             #Verifica se o resulatdo foi zero
             if self.reg_file.A == 0:
                 self.reg_file.setFlagBit("Z")
+
+            #Atulaiza o contador de programa
+            self.reg_file.PC += 1
             
             #Atualiza o clock
             self.clkElapsed = 8
@@ -1914,6 +2292,9 @@ class SimpleZ80:
             if self.reg_file.A == 0:
                 self.reg_file.setFlagBit("Z")
 
+            #Atulaiza o contador de programa
+            self.reg_file.PC += 1
+
             #Atualiza o clock
             self.clkElapsed = 8
 
@@ -1930,6 +2311,10 @@ class SimpleZ80:
             #Verifica se o resulatdo foi zero
             if self.reg_file.A == 0:
                 self.reg_file.setFlagBit("Z")
+
+
+            #Atulaiza o contador de programa
+            self.reg_file.PC += 1
 
             #Atualiza o clock
             self.clkElapsed = 8
@@ -1962,6 +2347,9 @@ class SimpleZ80:
             if temp == 0:
                 self.reg_file.setFlagBit("Z")
 
+            #Atulaiza o contador de programa
+            self.reg_file.PC += 1
+
             #Atualiza o clock
             self.clkElapsed = 8
            
@@ -1983,6 +2371,9 @@ class SimpleZ80:
                 #Instrução: ADD A,(HL)  Opcode 0x86
                 self.reg_file.A += self.mem[self.reg_file.HL]
 
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
+
                 #Atualiza o clock
                 self.clkElapsed = 8
                
@@ -1994,6 +2385,9 @@ class SimpleZ80:
 
                 #Instrução: ADD A,r8  Opcode 0x80 ~ 0x87
                 self.reg_file.A += self.reg_file.readReg8(reg)
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
                 
                 #Atualiza o clock
                 self.clkElapsed = 4
@@ -2026,6 +2420,9 @@ class SimpleZ80:
 
                 #Instrução: ADC A,(HL)  Opcode 0x8E
                 self.reg_file.A += (self.mem[self.reg_file.HL] + self.reg_file.getFlagBit("C"))
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
                 
                 #Atualiza o clock
                 self.clkElapsed = 8
@@ -2038,6 +2435,9 @@ class SimpleZ80:
 
                 #Instrução: ADC A,r8  Opcode 0x88 ~ 0x8F
                 self.reg_file.A += (self.reg_file.readReg8(reg) + self.reg_file.getFlagBit("C"))
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
                 
                 #Atualiza o clock
                 self.clkElapsed = 4
@@ -2074,6 +2474,9 @@ class SimpleZ80:
 
                 #Instrução: SUB A,(HL)  Opcode 0x96
                 self.reg_file.A -= self.mem[self.reg_file.HL]
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
                 
                 #Atualiza o clock
                 self.clkElapsed = 8
@@ -2086,6 +2489,9 @@ class SimpleZ80:
 
                 #Instrução: SUB A,r8  Opcode 0x90 ~ 0x97
                 self.reg_file.A -= self.reg_file.readReg8(reg)
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
                 
                 #Atualiza o clock
                 self.clkElapsed = 4
@@ -2118,6 +2524,9 @@ class SimpleZ80:
 
                 #Instrução: SBC A,(HL)  Opcode 0x9E
                 self.reg_file.A -= (self.mem[self.reg_file.HL] + self.reg_file.getFlagBit("C"))
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
                 
                 #Atualiza o clock
                 self.clkElapsed = 8
@@ -2130,6 +2539,9 @@ class SimpleZ80:
 
                 #Instrução: SBC A,r8  Opcode 0x98 ~ 0x9F
                 self.reg_file.A -= (self.reg_file.readReg8(reg) + self.reg_file.getFlagBit("C"))
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
                 
                 #Atualiza o clock
                 self.clkElapsed = 4
@@ -2160,6 +2572,9 @@ class SimpleZ80:
             if reg == 6:
                 #Instrução: AND A,(HL)  Opcode 0xA6
                 self.reg_file.A &= self.mem[self.reg_file.HL]
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
                 
                 #Atualiza o clock
                 self.clkElapsed = 8
@@ -2167,6 +2582,9 @@ class SimpleZ80:
             else:
                 #Instrução: AND A,r8  Opcode 0xA0 ~ 0xA7
                 self.reg_file.A &= self.reg_file.readReg8(reg)
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
                 
                 #Atualiza o clock
                 self.clkElapsed = 4
@@ -2185,6 +2603,9 @@ class SimpleZ80:
             if reg == 6:
                 #Instrução: XOR A,(HL)  Opcode 0xAE
                 self.reg_file.A ^= self.mem[self.reg_file.HL]
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
                 
                 #Atualiza o clock
                 self.clkElapsed = 8
@@ -2192,6 +2613,9 @@ class SimpleZ80:
             else:
                 #Instrução: XOR A,r8  Opcode 0xA8 ~ 0xAF
                 self.reg_file.A ^= self.reg_file.readReg8(reg)
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
                 
                 #Atualiza o clock
                 self.clkElapsed = 6
@@ -2211,6 +2635,9 @@ class SimpleZ80:
             if reg == 6:              
                 #Instrução: OR A,(HL)  Opcode 0xB6
                 self.reg_file.A |= self.mem[self.reg_file.HL]
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
                 
                 #Atualiza o clock
                 self.clkElapsed = 8
@@ -2218,6 +2645,9 @@ class SimpleZ80:
             else:
                 #Instrução: OR A,r8  Opcode 0xB0 ~ 0xB7
                 self.reg_file.A |= self.reg_file.readReg8(reg)
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
                 
                 #Atualiza o clock
                 self.clkElapsed = 4
@@ -2245,6 +2675,9 @@ class SimpleZ80:
 
                 #Instrução: CP A,(HL)  Opcode 0xBE
                 temp = (self.reg_file.A - self.mem[self.reg_file.HL])
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
                 
                 #Atualiza o clock
                 self.clkElapsed = 8
@@ -2257,6 +2690,9 @@ class SimpleZ80:
 
                 #Instrução: CP A,r8  Opcode 0xB8 ~ 0xBF
                 temp = (self.reg_file.A - self.reg_file.readReg8(reg))
+
+                #Atulaiza o contador de programa
+                self.reg_file.PC += 1
                 
                 #Atualiza o clock
                 self.clkElapsed = 4
